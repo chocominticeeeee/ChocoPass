@@ -79,11 +79,11 @@
 
       html.light {
         color-scheme: light;
-        --bg: #eef2f9;
+        --bg: #f7f9fd;
         --grid: rgba(71, 85, 105, 0.06);
         --glass-bg: rgba(255, 255, 255, 0.7);
         --glass-border: rgba(15, 23, 42, 0.08);
-        --glass-strong-bg: rgba(255, 255, 255, 0.85);
+        --glass-strong-bg: rgba(255, 255, 255, 0.96);
         --glass-strong-border: rgba(15, 23, 42, 0.1);
         --glow-1: rgba(34, 211, 238, 0.18);
         --glow-2: rgba(167, 139, 250, 0.2);
@@ -197,6 +197,10 @@
       html.light .border-white\/15,
       html.light .border-white\/5 {
         border-color: rgba(15, 23, 42, 0.1) !important;
+      }
+      /* インライン入力（フォルダ名変更・新規作成）の暗い下地をライトでは白に */
+      html.light .bg-slate-900\/80 {
+        background-color: rgba(255, 255, 255, 0.95) !important;
       }
       html.light .ring-white\/10 {
         --tw-ring-color: rgba(15, 23, 42, 0.1) !important;

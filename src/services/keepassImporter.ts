@@ -10,6 +10,8 @@ export interface PasswordEntry {
   url: string;
   notes: string;
   group?: string;
+  /** お気に入り登録 */
+  favorite?: boolean;
 }
 
 export async function importKeePassCSV(filePath: string): Promise<PasswordEntry[]> {

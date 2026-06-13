@@ -5,9 +5,8 @@ import {
   Copy,
   Check,
   ExternalLink,
-  Pencil,
-  Trash2,
   Inbox,
+  Star,
 } from 'lucide-react';
 import type { PasswordEntry } from '../../services/keepassImporter';
 import { MIME_ENTRY } from './FolderList';
@@ -15,10 +14,10 @@ import { MIME_ENTRY } from './FolderList';
 interface PasswordTableProps {
   entries: PasswordEntry[];
   onEdit: (entry: PasswordEntry) => void;
-  onDelete: (id: string) => void;
+  onToggleFavorite: (id: string) => void;
 }
 
-export function PasswordTable({ entries, onEdit, onDelete }: PasswordTableProps) {
+export function PasswordTable({ entries, onEdit, onToggleFavorite }: PasswordTableProps) {
   // パスワード表示中の行ID
   const [visible, setVisible] = useState<Set<string>>(new Set());
   // 直近コピーしたフィールドのキー（"id:field"）
@@ -45,12 +44,6 @@ export function PasswordTable({ entries, onEdit, onDelete }: PasswordTableProps)
     window.open(href, '_blank', 'noopener,noreferrer');
   };
 
-  const handleDelete = (entry: PasswordEntry) => {
-    if (window.confirm(`「${entry.title}」を削除しますか？`)) {
-      onDelete(entry.id);
-    }
-  };
-
   if (entries.length === 0) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center gap-3 text-slate-500">
@@ -64,15 +57,15 @@ export function PasswordTable({ entries, onEdit, onDelete }: PasswordTableProps)
     'rounded-md p-1.5 text-slate-500 transition hover:bg-white/10 hover:text-cyan-300';
 
   return (
-    <div className="flex-1 overflow-auto px-6 py-4">
-      <table className="w-full border-separate border-spacing-y-2 text-sm">
+    <div className="flex-1 overflow-auto px-4 py-3">
+      <table className="w-full border-separate border-spacing-y-1.5 text-sm">
         <thead className="text-left text-[11px] uppercase tracking-wider text-slate-500">
           <tr>
-            <th className="px-4 py-2 font-medium">タイトル</th>
-            <th className="px-4 py-2 font-medium">ユーザー名</th>
-            <th className="px-4 py-2 font-medium">パスワード</th>
-            <th className="px-4 py-2 font-medium">ウェブサイト</th>
-            <th className="px-4 py-2 text-right font-medium">操作</th>
+            <th className="whitespace-nowrap px-2.5 py-2 font-medium">タイトル</th>
+            <th className="whitespace-nowrap px-2.5 py-2 font-medium">ユーザー名</th>
+            <th className="whitespace-nowrap px-2.5 py-2 font-medium">パスワード</th>
+            <th className="whitespace-nowrap px-2.5 py-2 font-medium">ウェブサイト</th>
+            <th className="whitespace-nowrap px-2.5 py-2 font-medium">メモ</th>
           </tr>
         </thead>
         <tbody>
@@ -88,10 +81,32 @@ export function PasswordTable({ entries, onEdit, onDelete }: PasswordTableProps)
                 }}
                 className="group cursor-grab align-middle [&>td]:bg-white/[0.03] [&>td]:transition hover:[&>td]:bg-white/[0.07] active:cursor-grabbing [&>td:first-child]:rounded-l-xl [&>td:last-child]:rounded-r-xl [&>td]:border-y [&>td]:border-white/5 [&>td:first-child]:border-l [&>td:last-child]:border-r"
               >
-                {/* タイトル */}
-                <td className="px-4 py-3 font-medium text-white">
-                  <div className="flex items-center gap-3">
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-400/20 to-violet-500/20 text-xs font-bold uppercase text-cyan-300 ring-1 ring-inset ring-white/10">
+                {/* タイトル（ダブルクリックで編集） */}
+                <td
+                  className="cursor-pointer select-none px-2.5 py-2 font-medium text-white"
+                  onDoubleClick={() => onEdit(entry)}
+                  title="ダブルクリックで編集"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onToggleFavorite(entry.id);
+                      }}
+                      onDoubleClick={(e) => e.stopPropagation()}
+                      className={`shrink-0 rounded-md p-1 transition ${
+                        entry.favorite
+                          ? 'text-amber-400 hover:text-amber-300'
+                          : 'text-slate-600 hover:bg-white/10 hover:text-amber-300'
+                      }`}
+                      title={entry.favorite ? 'お気に入りを解除' : 'お気に入りに登録'}
+                    >
+                      <Star
+                        className="h-4 w-4"
+                        fill={entry.favorite ? 'currentColor' : 'none'}
+                      />
+                    </button>
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-400/20 to-violet-500/20 text-xs font-bold uppercase text-cyan-300 ring-1 ring-inset ring-white/10">
                       {entry.title.slice(0, 1) || '?'}
                     </span>
                     <span className="truncate">{entry.title}</span>
@@ -99,7 +114,7 @@ export function PasswordTable({ entries, onEdit, onDelete }: PasswordTableProps)
                 </td>
 
                 {/* ユーザー名 */}
-                <td className="px-4 py-3 text-slate-300">
+                <td className="px-2.5 py-2 text-slate-300">
                   {entry.username ? (
                     <div className="flex items-center gap-2">
                       <span className="truncate max-w-[180px]">
@@ -123,7 +138,7 @@ export function PasswordTable({ entries, onEdit, onDelete }: PasswordTableProps)
                 </td>
 
                 {/* パスワード */}
-                <td className="px-4 py-3 text-slate-300">
+                <td className="px-2.5 py-2 text-slate-300">
                   {entry.password ? (
                     <div className="flex items-center gap-2">
                       <span className="font-mono truncate max-w-[160px] tracking-tight">
@@ -158,13 +173,13 @@ export function PasswordTable({ entries, onEdit, onDelete }: PasswordTableProps)
                 </td>
 
                 {/* ウェブサイト */}
-                <td className="px-4 py-3">
+                <td className="px-2.5 py-2">
                   {entry.url ? (
                     <button
                       onClick={() => openUrl(entry.url)}
                       className="flex items-center gap-1.5 text-cyan-400 transition hover:text-cyan-300 hover:underline"
                     >
-                      <span className="truncate max-w-[180px]">{entry.url}</span>
+                      <span className="truncate max-w-[160px]">{entry.url}</span>
                       <ExternalLink className="h-3.5 w-3.5 flex-shrink-0" />
                     </button>
                   ) : (
@@ -172,24 +187,18 @@ export function PasswordTable({ entries, onEdit, onDelete }: PasswordTableProps)
                   )}
                 </td>
 
-                {/* 操作 */}
-                <td className="px-4 py-3">
-                  <div className="flex items-center justify-end gap-1">
-                    <button
-                      onClick={() => onEdit(entry)}
-                      className="rounded-md p-1.5 text-slate-500 transition hover:bg-cyan-400/10 hover:text-cyan-300"
-                      title="編集"
+                {/* メモ */}
+                <td className="px-2.5 py-2 text-slate-400">
+                  {entry.notes ? (
+                    <span
+                      className="block max-w-[200px] truncate"
+                      title={entry.notes}
                     >
-                      <Pencil className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(entry)}
-                      className="rounded-md p-1.5 text-slate-500 transition hover:bg-rose-500/10 hover:text-rose-300"
-                      title="削除"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
+                      {entry.notes}
+                    </span>
+                  ) : (
+                    <span className="text-slate-600">—</span>
+                  )}
                 </td>
               </tr>
             );

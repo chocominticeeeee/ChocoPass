@@ -1,78 +1,33 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  Folder,
-  FolderOpen,
   FolderPlus,
   LayoutGrid,
   ChevronRight,
   ChevronDown,
   Pencil,
   Trash2,
-  Palette,
+  Smile,
   RotateCcw,
   Star,
-  Heart,
-  Briefcase,
-  Home,
-  Globe,
-  Mail,
-  CreditCard,
-  ShoppingCart,
-  Gamepad2,
-  Music,
-  Code,
-  Server,
-  Database,
-  Lock,
-  Key,
-  User,
-  Users,
-  Building2,
-  Cloud,
-  Wallet,
-  Smartphone,
-  Bookmark,
-  Tag,
-  Flag,
-  Bell,
 } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
 import type { PasswordEntry } from '../../services/keepassImporter';
 
-/** フォルダに割り当て可能なアイコン（名前 → コンポーネント） */
-const FOLDER_ICONS: Record<string, LucideIcon> = {
-  Folder,
-  Star,
-  Heart,
-  Briefcase,
-  Home,
-  Globe,
-  Mail,
-  CreditCard,
-  ShoppingCart,
-  Gamepad2,
-  Music,
-  Code,
-  Server,
-  Database,
-  Lock,
-  Key,
-  User,
-  Users,
-  Building2,
-  Cloud,
-  Wallet,
-  Smartphone,
-  Bookmark,
-  Tag,
-  Flag,
-  Bell,
-};
+/** フォルダに割り当て可能な絵文字 */
+const FOLDER_EMOJIS = [
+  '📁', '📂', '⭐', '❤️', '💼', '🏠', '🌐', '✉️',
+  '💳', '🛒', '🎮', '🎵', '💻', '🖥️', '🗄️', '🔒',
+  '🔑', '👤', '👥', '🏢', '☁️', '👛', '📱', '🔖',
+  '🏷️', '🚩', '🔔', '🎬', '📷', '🎨', '🍕', '✈️',
+  '🏦', '🎓', '⚙️', '📝', '💰', '🔐', '🎯', '📌',
+  '📦',
+];
 
 export const UNGROUPED = '未分類';
 /** 「すべて」を表す特別なフォルダキー */
 export const ALL_FOLDERS = '__ALL__';
+/** 「お気に入り」を表す特別なフォルダキー */
+export const FAVORITES = '__FAV__';
 /** 階層の区切り文字 */
 export const PATH_SEP = '/';
 
@@ -102,8 +57,8 @@ interface FolderListProps {
   onDeleteFolder: (path: string) => boolean;
 }
 
-const EMPTY_FOLDERS_KEY = 'chocopass-empty-folders';
-const FOLDER_ICONS_KEY = 'chocopass-folder-icons';
+export const EMPTY_FOLDERS_KEY = 'chocopass-empty-folders';
+export const FOLDER_ICONS_KEY = 'chocopass-folder-icons';
 
 /** エントリ群（＋空フォルダ）からフォルダツリーを構築する */
 function buildTree(
@@ -276,6 +231,7 @@ export function FolderList({
   };
 
   const { roots, ungroupedCount } = buildTree(entries, extraFolders);
+  const favoriteCount = entries.filter((e) => e.favorite).length;
 
   // メニュー表示中はどこかをクリック / Esc で閉じる
   useEffect(() => {
@@ -482,18 +438,9 @@ export function FolderList({
           ) : (
             <span className="w-4 flex-shrink-0" />
           )}
-          {(() => {
-            const customName = folderIcons[node.path];
-            if (customName && FOLDER_ICONS[customName]) {
-              const Icon = FOLDER_ICONS[customName];
-              return <Icon className="w-4 h-4 flex-shrink-0" />;
-            }
-            return active || (isOpen && hasChildren) ? (
-              <FolderOpen className="w-4 h-4 flex-shrink-0" />
-            ) : (
-              <Folder className="w-4 h-4 flex-shrink-0" />
-            );
-          })()}
+          <span className="flex w-4 flex-shrink-0 items-center justify-center text-sm leading-none">
+            {folderIcons[node.path] ?? (active || (isOpen && hasChildren) ? '📂' : '📁')}
+          </span>
           {isRenaming ? (
             <input
               ref={renameInputRef}
@@ -539,6 +486,25 @@ export function FolderList({
         setMenu({ path: '', x: e.clientX, y: e.clientY, mode: 'main' });
       }}
     >
+      {/* お気に入り（最上部・お気に入りが1件以上あるときだけ表示） */}
+      {favoriteCount > 0 && (
+        <div
+          onClick={() => onSelectFolder(FAVORITES)}
+          className={rowClass(selectedFolder === FAVORITES, false)}
+          style={{ paddingLeft: 8 }}
+        >
+          <span className="w-4 flex-shrink-0" />
+          <Star
+            className="w-4 h-4 flex-shrink-0 text-amber-400"
+            fill="currentColor"
+          />
+          <span className="text-sm font-semibold truncate flex-1">
+            お気に入り
+          </span>
+          <span className="text-xs text-slate-500">{favoriteCount}</span>
+        </div>
+      )}
+
       {/* すべて（ドロップでルート/未分類へ移動） */}
       <div
         onClick={() => onSelectFolder(ALL_FOLDERS)}
@@ -567,7 +533,9 @@ export function FolderList({
           style={{ paddingLeft: 8 }}
         >
           <span className="w-4 flex-shrink-0" />
-          <Folder className="w-4 h-4 flex-shrink-0 text-slate-500" />
+          <span className="flex w-4 flex-shrink-0 items-center justify-center text-sm leading-none">
+            📁
+          </span>
           <span className="text-sm font-medium truncate flex-1">{UNGROUPED}</span>
           <span className="text-xs text-slate-500">{ungroupedCount}</span>
         </div>
@@ -578,11 +546,11 @@ export function FolderList({
         createPortal(
           <div
             className={`glass-strong fixed z-[100] animate-scale-in rounded-xl p-1.5 text-sm shadow-2xl shadow-black/50 ${
-              menu.mode === 'icon' ? 'w-[232px]' : 'min-w-[180px]'
+              menu.mode === 'icon' ? 'w-[300px]' : 'min-w-[180px]'
             }`}
             style={{
-              top: Math.min(menu.y, window.innerHeight - (menu.mode === 'icon' ? 220 : 160)),
-              left: Math.min(menu.x, window.innerWidth - 240),
+              top: Math.min(menu.y, window.innerHeight - (menu.mode === 'icon' ? 240 : 160)),
+              left: Math.min(menu.x, window.innerWidth - (menu.mode === 'icon' ? 312 : 240)),
             }}
             onClick={(e) => e.stopPropagation()}
             onContextMenu={(e) => e.preventDefault()}
@@ -590,7 +558,7 @@ export function FolderList({
             {menu.mode === 'icon' ? (
               <>
                 <div className="flex items-center justify-between px-2 py-1.5">
-                  <span className="text-xs font-semibold text-slate-400">アイコンを選択</span>
+                  <span className="text-xs font-semibold text-slate-400">絵文字を選択</span>
                   <button
                     onClick={() => setFolderIcon(menu.path, null)}
                     title="既定に戻す"
@@ -600,21 +568,21 @@ export function FolderList({
                     既定
                   </button>
                 </div>
-                <div className="grid grid-cols-6 gap-1 px-1 pb-1">
-                  {Object.entries(FOLDER_ICONS).map(([name, Icon]) => {
-                    const selected = folderIcons[menu.path] === name;
+                <div className="grid grid-cols-8 gap-1 px-1 pb-1">
+                  {FOLDER_EMOJIS.map((emoji) => {
+                    const selected = folderIcons[menu.path] === emoji;
                     return (
                       <button
-                        key={name}
-                        onClick={() => setFolderIcon(menu.path, name)}
-                        title={name}
-                        className={`flex h-8 w-8 items-center justify-center rounded-lg transition ${
+                        key={emoji}
+                        onClick={() => setFolderIcon(menu.path, emoji)}
+                        title={emoji}
+                        className={`flex h-8 w-8 items-center justify-center rounded-lg text-lg leading-none transition ${
                           selected
-                            ? 'bg-cyan-400/20 text-cyan-200 ring-1 ring-inset ring-cyan-400/40'
-                            : 'text-slate-300 hover:bg-white/10 hover:text-cyan-200'
+                            ? 'bg-cyan-400/20 ring-1 ring-inset ring-cyan-400/40'
+                            : 'hover:bg-white/10'
                         }`}
                       >
-                        <Icon className="h-4 w-4" />
+                        {emoji}
                       </button>
                     );
                   })}
@@ -637,8 +605,8 @@ export function FolderList({
                       onClick={() => setMenu({ ...menu, mode: 'icon' })}
                       className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-slate-200 transition hover:bg-cyan-400/10 hover:text-cyan-200"
                     >
-                      <Palette className="h-4 w-4" />
-                      アイコンを変更
+                      <Smile className="h-4 w-4" />
+                      絵文字を変更
                     </button>
                     <button
                       onClick={() => startRename(menu.path)}

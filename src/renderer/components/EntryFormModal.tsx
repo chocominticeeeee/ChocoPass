@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Sparkles } from 'lucide-react';
+import { X, Sparkles, Trash2 } from 'lucide-react';
 import type { PasswordEntry } from '../../services/keepassImporter';
 
 interface EntryFormModalProps {
@@ -7,13 +7,15 @@ interface EntryFormModalProps {
   entry?: PasswordEntry;
   onSave: (entry: PasswordEntry) => void;
   onClose: () => void;
+  /** エントリを削除（編集時のみ） */
+  onDelete?: (id: string) => void;
 }
 
 const inputClass =
   'w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 transition focus:border-cyan-400/50 focus:bg-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-400/20';
 const labelClass = 'block text-sm font-medium text-slate-300 mb-1.5';
 
-export function EntryFormModal({ entry, onSave, onClose }: EntryFormModalProps) {
+export function EntryFormModal({ entry, onSave, onClose, onDelete }: EntryFormModalProps) {
   const isEdit = !!entry;
   const [title, setTitle] = useState(entry?.title ?? '');
   const [username, setUsername] = useState(entry?.username ?? '');
@@ -34,6 +36,14 @@ export function EntryFormModal({ entry, onSave, onClose }: EntryFormModalProps) 
       result += charset[values[i] % charset.length];
     }
     setPassword(result);
+  };
+
+  const handleDelete = () => {
+    if (!entry || !onDelete) return;
+    if (window.confirm(`「${entry.title}」を削除しますか？`)) {
+      onDelete(entry.id);
+      onClose();
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -61,7 +71,7 @@ export function EntryFormModal({ entry, onSave, onClose }: EntryFormModalProps) 
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
       <form
         onSubmit={handleSubmit}
-        className="glass-strong relative w-full max-w-md animate-scale-in overflow-hidden rounded-2xl shadow-2xl shadow-black/60"
+        className="glass-strong relative w-full max-w-xl animate-scale-in overflow-hidden rounded-2xl shadow-2xl shadow-black/60"
       >
         {/* 上部のネオンライン */}
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-400/70 to-transparent" />
@@ -165,6 +175,17 @@ export function EntryFormModal({ entry, onSave, onClose }: EntryFormModalProps) 
         </div>
 
         <div className="flex gap-3 border-t border-white/10 px-6 py-5">
+          {isEdit && onDelete && (
+            <button
+              type="button"
+              onClick={handleDelete}
+              className="flex items-center justify-center gap-2 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-2.5 font-medium text-rose-300 transition hover:bg-rose-500/20 active:scale-[0.98]"
+              title="削除"
+            >
+              <Trash2 className="h-4 w-4" />
+              削除
+            </button>
+          )}
           <button
             type="button"
             onClick={onClose}

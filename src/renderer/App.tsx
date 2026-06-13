@@ -1,14 +1,24 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ImportModal } from './components/ImportModal';
 import { EntryFormModal } from './components/EntryFormModal';
-import { FolderList, ALL_FOLDERS, UNGROUPED, PATH_SEP } from './components/FolderList';
+import {
+  FolderList,
+  ALL_FOLDERS,
+  UNGROUPED,
+  FAVORITES,
+  PATH_SEP,
+  EMPTY_FOLDERS_KEY,
+  FOLDER_ICONS_KEY,
+} from './components/FolderList';
 import { PasswordTable } from './components/PasswordTable';
 import { TitleBar } from './components/TitleBar';
 import { MasterPasswordScreen } from './components/MasterPasswordScreen';
 import { SettingsModal } from './components/SettingsModal';
 import { getStoredTheme, applyTheme, type Theme } from './theme';
 import type { PasswordEntry } from '../services/keepassImporter';
-import { Plus, Upload, ShieldCheck, Search, KeyRound } from 'lucide-react';
+import { Plus, Upload, Search } from 'lucide-react';
+import avatarUrl from './assets/アバター透過.png';
+import logoUrl from './assets/logo.png';
 
 type AuthState = 'loading' | 'setup' | 'unlock' | 'unlocked';
 
@@ -30,6 +40,8 @@ export function App() {
   const resizingRef = useRef(false);
   // 読み込み直後の空配列で保存上書きしないためのガード
   const loadedRef = useRef(false);
+  // 全削除時に FolderList を再マウントしてフォルダ状態を作り直すためのキー
+  const [vaultEpoch, setVaultEpoch] = useState(0);
 
   // サイドバー幅を保存
   useEffect(() => {
@@ -129,6 +141,13 @@ export function App() {
     setPasswords((prev) => prev.filter((p) => p.id !== id));
   };
 
+  // お気に入りの登録/解除を切り替える
+  const handleToggleFavorite = (id: string) => {
+    setPasswords((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, favorite: !p.favorite } : p))
+    );
+  };
+
   const handleDeleteAll = () => {
     if (passwords.length === 0) return;
     const ok = window.confirm(
@@ -136,6 +155,12 @@ export function App() {
     );
     if (!ok) return;
     setPasswords([]);
+    // 明示的に作成した空フォルダと絵文字割り当ても消す
+    localStorage.removeItem(EMPTY_FOLDERS_KEY);
+    localStorage.removeItem(FOLDER_ICONS_KEY);
+    setSelectedFolder(ALL_FOLDERS);
+    // FolderList を再マウントして空の localStorage から作り直す
+    setVaultEpoch((n) => n + 1);
   };
 
   // エントリを別フォルダへ移動（targetPath が空文字なら未分類）
@@ -225,6 +250,7 @@ export function App() {
   // 選択中のフォルダに属するエントリ（サブフォルダも含める）
   const folderEntries = passwords.filter((entry) => {
     if (selectedFolder === ALL_FOLDERS) return true;
+    if (selectedFolder === FAVORITES) return !!entry.favorite;
     const group = entry.group?.trim() ?? '';
     if (selectedFolder === UNGROUPED) return group === '';
     return (
@@ -244,7 +270,11 @@ export function App() {
     : folderEntries;
 
   const folderLabel =
-    selectedFolder === ALL_FOLDERS ? 'すべて' : selectedFolder;
+    selectedFolder === ALL_FOLDERS
+      ? 'すべて'
+      : selectedFolder === FAVORITES
+      ? 'お気に入り'
+      : selectedFolder;
 
   return (
     <div className="flex h-screen flex-col overflow-hidden text-slate-200">
@@ -275,27 +305,17 @@ export function App() {
         style={{ width: sidebarWidth }}
       >
         <div className="px-6 py-6 border-b border-white/10">
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-neon-cyan to-neon-violet blur-md opacity-70 animate-glow-pulse" />
-              <div className="relative flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-400 to-violet-500 shadow-lg">
-                <ShieldCheck className="h-6 w-6 text-slate-950" strokeWidth={2.4} />
-              </div>
-            </div>
-            <div>
-              <h1 className="font-display text-2xl font-bold leading-none tracking-tight text-gradient">
-                ChocoPass
-              </h1>
-              <p className="mt-1 text-[11px] uppercase tracking-[0.2em] text-slate-500">
-                Secure Vault
-              </p>
-            </div>
-          </div>
+          <img
+            src={logoUrl}
+            alt="ちょこパス"
+            className="h-auto w-44 max-w-full object-contain"
+          />
         </div>
 
         {/* フォルダ一覧 */}
         <div className="flex-1 overflow-y-auto px-2 py-2">
           <FolderList
+            key={vaultEpoch}
             entries={passwords}
             selectedFolder={selectedFolder}
             onSelectFolder={setSelectedFolder}
@@ -328,11 +348,19 @@ export function App() {
         {passwords.length === 0 ? (
           <div className="flex-1 flex items-center justify-center p-8">
             <div className="text-center animate-fade-in">
-              <div className="relative mx-auto mb-8 h-28 w-28">
-                <div className="absolute inset-0 rounded-full bg-gradient-to-br from-neon-cyan to-neon-violet blur-2xl opacity-50 animate-glow-pulse" />
-                <div className="relative flex h-full w-full items-center justify-center rounded-full glass animate-float">
-                  <KeyRound className="h-12 w-12 text-cyan-300" strokeWidth={1.6} />
-                </div>
+              <div className="mx-auto mb-8 flex items-center justify-center gap-5">
+                {/* ロゴ */}
+                <img
+                  src={logoUrl}
+                  alt="ちょこパス"
+                  className="h-28 w-auto max-w-[260px] object-contain"
+                />
+                {/* アバター（ロゴの右に配置） */}
+                <img
+                  src={avatarUrl}
+                  alt=""
+                  className="h-32 w-auto animate-float object-contain"
+                />
               </div>
               <h2 className="font-display text-3xl font-bold tracking-tight text-white mb-3">
                 ChocoPass へようこそ
@@ -362,7 +390,7 @@ export function App() {
         ) : (
           <>
             {/* ヘッダー：フォルダ名 + 検索 */}
-            <div className="flex items-center justify-between gap-4 px-8 py-5 border-b border-white/10">
+            <div className="flex items-center justify-between gap-4 px-8 py-5 border-b border-white/10 bg-white/[0.03]">
               <div className="min-w-0">
                 <h2 className="font-display text-xl font-bold text-white truncate flex items-center gap-3">
                   {folderLabel}
@@ -395,7 +423,7 @@ export function App() {
             <PasswordTable
               entries={visibleEntries}
               onEdit={handleEdit}
-              onDelete={handleDelete}
+              onToggleFavorite={handleToggleFavorite}
             />
           </>
         )}
@@ -416,6 +444,7 @@ export function App() {
         <EntryFormModal
           entry={editingEntry ?? undefined}
           onSave={handleSave}
+          onDelete={handleDelete}
           onClose={() => {
             setShowFormModal(false);
             setEditingEntry(null);
