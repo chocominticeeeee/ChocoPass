@@ -12,7 +12,6 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "moduleResolution": "node",
-    "ignoreDeprecations": "6.0"
   },
   "include": ["src/main.ts", "src/preload.ts", "src/services/**/*"],
   "exclude": ["node_modules", "src/renderer"]

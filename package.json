@@ -1,6 +1,6 @@
 {
   "name": "chocopass",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "Modern password manager - KeePass alternative built with Electron, TypeScript, and Shadcn UI",
   "main": "dist/main.js",
   "author": "",
@@ -37,7 +37,7 @@
     "concurrently": "^8.2.2",
     "cross-env": "^10.1.0",
     "electron": "^41.7.1",
-    "electron-builder": "^26.15.3",
+    "electron-builder": "^25.0.0",
     "postcss": "^8.5.15",
     "tailwindcss": "^4.3.1",
     "typescript": "^6.0.3",
