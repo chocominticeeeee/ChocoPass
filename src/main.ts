@@ -1,24 +1,48 @@
 import { app, BrowserWindow, ipcMain, Menu, dialog } from 'electron';
 import path from 'path';
-import { importKeePassCSV } from './services/keepassImporter';
-import type { PasswordEntry } from './services/keepassImporter';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+import { importKeePassCSV } from './services/keepassImporter.js';
+import type { PasswordEntry } from './services/keepassImporter.js';
 import {
-  loadVault,
-  saveVault,
   hasMasterPassword,
+  isUnlocked,
   setupMaster,
   unlock,
   lock,
   changeMaster,
-  isUnlocked,
   getDataDir,
   setDataDir,
-} from './services/vaultStore';
+  loadVault,
+  saveVault,
+  openDbFile,
+  getCurrentDbPath,
+} from './services/vaultStore.js';
 
-// 保存先を AppData\Roaming\ChocoPass に固定する（未パッケージ時の "Electron" 既定を上書き）
-app.setName('ChocoPass');
+// ESM では __dirname が存在しないため import.meta.url から導出する
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-let mainWindow: BrowserWindow | null;
+let mainWindow: any;
+
+/** 起動引数から実在する .cdb ファイルのパスを探す（ダブルクリック起動時に渡される） */
+function findCdbInArgv(argv: string[]): string | null {
+  for (const arg of argv) {
+    if (arg.toLowerCase().endsWith('.cdb') && fs.existsSync(arg)) {
+      return arg;
+    }
+  }
+  return null;
+}
+
+/** 指定された .cdb を開き、ウィンドウがあればレンダラへ通知してロック画面に戻す */
+function handleOpenCdb(filePath: string) {
+  openDbFile(filePath);
+  if (mainWindow) {
+    mainWindow.webContents.send('open-cdb', filePath);
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
+  }
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -30,7 +54,7 @@ function createWindow() {
     frame: false,
     backgroundColor: '#05070f',
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: path.join(__dirname, 'preload.cjs'),
       nodeIntegration: false,
       contextIsolation: true,
     },
@@ -57,7 +81,42 @@ function createWindow() {
   });
 }
 
-app.on('ready', createWindow);
+// 二重起動を防ぐ。既に起動中なら、渡された .cdb を最初のインスタンスに転送して終了する
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+if (!gotSingleInstanceLock) {
+  app.quit();
+} else {
+  app.on('second-instance', (_event: any, argv: string[]) => {
+    const file = findCdbInArgv(argv);
+    if (file) {
+      handleOpenCdb(file);
+    } else if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
+  });
+}
+
+// macOS: Finder からのファイルオープン（ready 前にも発火しうるので最上位で登録）
+app.on('open-file', (event: any, filePath: string) => {
+  event.preventDefault();
+  if (app.isReady()) {
+    handleOpenCdb(filePath);
+  } else {
+    // 起動途中なら、ウィンドウ生成後に開けるよう記憶しておく
+    openDbFile(filePath);
+  }
+});
+
+app.on('ready', () => {
+  app.setName('ChocoPass');
+  // ダブルクリック起動時はそのファイルを開いた状態でウィンドウを作る
+  const file = findCdbInArgv(process.argv);
+  if (file) {
+    openDbFile(file);
+  }
+  createWindow();
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
@@ -99,12 +158,12 @@ ipcMain.handle('auth-status', () => {
   return { hasMaster: hasMasterPassword(), unlocked: isUnlocked() };
 });
 
-ipcMain.handle('setup-master', (_event, password: string) => {
+ipcMain.handle('setup-master', (_event: any, password: string) => {
   const entries = setupMaster(password);
   return { ok: true, entries };
 });
 
-ipcMain.handle('unlock-vault', (_event, password: string) => {
+ipcMain.handle('unlock-vault', (_event: any, password: string) => {
   const entries = unlock(password);
   if (entries === null) {
     return { ok: false };
@@ -117,7 +176,7 @@ ipcMain.handle('lock-vault', () => {
   return true;
 });
 
-ipcMain.handle('change-master', (_event, payload: { oldPassword: string; newPassword: string }) => {
+ipcMain.handle('change-master', (_event: any, payload: { oldPassword: string; newPassword: string }) => {
   const ok = changeMaster(payload.oldPassword, payload.newPassword);
   return { ok };
 });
@@ -125,6 +184,11 @@ ipcMain.handle('change-master', (_event, payload: { oldPassword: string; newPass
 // --- データ保存先 ---
 ipcMain.handle('get-data-dir', () => {
   return getDataDir();
+});
+
+// 現在開いている .cdb のフルパス
+ipcMain.handle('get-current-db', () => {
+  return getCurrentDbPath();
 });
 
 ipcMain.handle('change-data-dir', async () => {
@@ -146,12 +210,12 @@ ipcMain.handle('change-data-dir', async () => {
 });
 
 // IPC handler: import from an explicit file path
-ipcMain.handle('import-keepass-csv', async (_event, filePath: string) => {
+ipcMain.handle('import-keepass-csv', async (_event: any, filePath: string) => {
   return await importKeePassCSV(filePath);
 });
 
 // IPC handler: open a native file dialog, then import the selected CSV
-ipcMain.handle('select-and-import-csv', async () => {
+ipcMain.handle('select-and-import-csv', async (_event: any) => {
   const result = await dialog.showOpenDialog({
     title: 'KeePass CSVを選択',
     properties: ['openFile'],
@@ -171,7 +235,7 @@ ipcMain.handle('load-vault', async () => {
 });
 
 // IPC handler: エントリ一覧を永続保存する
-ipcMain.handle('save-vault', async (_event, entries: PasswordEntry[]) => {
+ipcMain.handle('save-vault', async (_event: any, entries: PasswordEntry[]) => {
   saveVault(entries);
   return true;
 });

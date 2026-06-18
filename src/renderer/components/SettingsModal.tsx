@@ -10,6 +10,8 @@ interface SettingsModalProps {
   passwordCount: number;
   /** すべてのパスワードを削除 */
   onDeleteAll: () => void;
+  /** マスターパスワードが設定済みか（未設定なら変更欄を隠す） */
+  hasMaster: boolean;
 }
 
 export function SettingsModal({
@@ -18,6 +20,7 @@ export function SettingsModal({
   onClose,
   passwordCount,
   onDeleteAll,
+  hasMaster,
 }: SettingsModalProps) {
   const [oldPw, setOldPw] = useState('');
   const [newPw, setNewPw] = useState('');
@@ -165,7 +168,8 @@ export function SettingsModal({
             </div>
           </section>
 
-          {/* マスターパスワード変更 */}
+          {/* マスターパスワード変更（設定済みのときのみ表示） */}
+          {hasMaster && (
           <section>
             <h3 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
               <KeyRound className="h-3.5 w-3.5" />
@@ -216,8 +220,10 @@ export function SettingsModal({
               </button>
             </form>
           </section>
+          )}
 
-          {/* 危険な操作：全削除 */}
+          {/* 危険な操作：全削除（登録が1件以上のときのみ表示） */}
+          {passwordCount > 0 && (
           <section>
             <h3 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-rose-400/80">
               <Trash2 className="h-3.5 w-3.5" />
@@ -238,6 +244,7 @@ export function SettingsModal({
               </button>
             </div>
           </section>
+          )}
         </div>
       </div>
     </div>

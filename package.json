@@ -2,15 +2,16 @@
   "name": "chocopass",
   "version": "0.0.1",
   "description": "Modern password manager - KeePass alternative built with Electron, TypeScript, and Shadcn UI",
+  "type": "module",
   "main": "dist/main.js",
   "author": "",
   "license": "ISC",
   "scripts": {
     "dev": "concurrently -k \"npm:dev:vite\" \"npm:dev:electron\"",
     "dev:vite": "vite",
-    "dev:electron": "tsc && wait-on tcp:5173 && cross-env VITE_DEV_SERVER_URL=http://localhost:5173 electron dist/main.js",
-    "build": "tsc && vite build",
-    "typecheck": "tsc --noEmit && tsc -p tsconfig.renderer.json",
+    "dev:electron": "tsc -p tsconfig.node.json && wait-on tcp:5173 && cross-env VITE_DEV_SERVER_URL=http://localhost:5173 electron dist/main.js",
+    "build": "tsc -p tsconfig.node.json && vite build",
+    "typecheck": "tsc -p tsconfig.node.json --noEmit && tsc -p tsconfig.renderer.json",
     "start": "electron dist/main.js",
     "pack": "npm run build && electron-builder --dir",
     "dist": "npm run build && electron-builder"
@@ -25,10 +26,16 @@
     ],
     "directories": {
       "buildResources": "public"
-    }
+    },
+    "fileAssociations": [
+      {
+        "ext": "cdb",
+        "name": "ChocoPass Database",
+        "description": "ChocoPass password database"
+      }
+    ]
   },
   "devDependencies": {
-    "@types/electron": "^1.4.38",
     "@types/node": "^25.9.3",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",

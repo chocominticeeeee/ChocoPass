@@ -69,14 +69,18 @@ export function MasterPasswordScreen({ mode, onUnlocked }: MasterPasswordScreenP
 
     return (
         <div className="flex h-full w-full items-center justify-center p-6">
-            <form onSubmit={submit} className="w-full max-w-sm animate-fade-in">
+            <form onSubmit={submit} className="w-full max-w-lg animate-fade-in">
                 {/* ロゴ */}
-                <div className="mb-8 flex flex-col items-center text-center">
-                    <div className="mb-4 relative flex items-center justify-center h-96">
+                <div className="mb-8 flex flex-col items-center justify-start text-center">
+                    <div className="mb-4 relative flex w-full items-center h-96">
+                        {/* アバター（ロゴの後ろに配置） */}
+                        <img
+                            src={avatarUrl}
+                            alt=""
+                            className="h-96 w-auto animate-float object-contain absolute -right-12 z-0"
+                        />
                         {/* ロゴ */}
-                        <img src={logoUrl} alt="ちょこパス" className="h-96 w-auto object-contain" />
-                        {/* アバター（ロゴの右に配置） */}
-                        <img src={avatarUrl} alt="" className="h-96 w-auto animate-float object-contain absolute right-0" />
+                        <img src={logoUrl} alt="ちょこパス" className="relative z-10 h-96 max-w-sm me-auto object-contain" />
                     </div>
                     <p className="mt-1 text-sm text-slate-400">
                         {isSetup

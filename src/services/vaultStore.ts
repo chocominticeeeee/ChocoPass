@@ -1,8 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-import { app, safeStorage } from 'electron';
-import type { PasswordEntry } from './keepassImporter';
+import { app } from 'electron';
+import type { PasswordEntry } from './keepassImporter.js';
 
 /**
  * マスターパスワードによる暗号化ストア。
@@ -10,12 +10,18 @@ import type { PasswordEntry } from './keepassImporter';
  * - マスターパスワードから scrypt で 256bit 鍵を導出する。
  * - vault は AES-256-GCM で暗号化し、GCM の認証タグでパスワードの正否を検証する。
  * - 導出した鍵は main プロセスのメモリ上にのみ保持し、ファイルには一切書き出さない。
+ * - 認証情報と vault は単一の独自形式ファイル（chocopass.cdb）にまとめて保存する。
  */
+
+/** データファイル名（独自拡張子 .cdb = ChocoPass DB） */
+const DB_FILENAME = 'chocopass.cdb';
+const DB_FORMAT = 'ChocoPassDB';
+const DB_VERSION = 1;
 
 /**
  * 保存先ディレクトリの設定。
  * config.json は常に既定の userData に置き、その中の dataDir で
- * 実データ（auth.json / vault.enc）の保存先を指す。
+ * 実データ（chocopass.cdb）の保存先を指す。
  */
 function getConfigPath(): string {
   return path.join(app.getPath('userData'), 'config.json');
@@ -42,7 +48,7 @@ export function getDataDir(): string {
 }
 
 /**
- * 保存先ディレクトリを変更する。既存の auth.json / vault.enc を新しい場所へ移動し、
+ * 保存先ディレクトリを変更する。既存の chocopass.cdb を新しい場所へ移動し、
  * 選択を config.json に記録する。新しいパスを返す。
  */
 export function setDataDir(newDir: string): string {
@@ -54,13 +60,11 @@ export function setDataDir(newDir: string): string {
   if (!fs.existsSync(resolvedNew)) {
     fs.mkdirSync(resolvedNew, { recursive: true });
   }
-  for (const name of ['auth.json', 'vault.enc']) {
-    const src = path.join(current, name);
-    const dest = path.join(resolvedNew, name);
-    if (fs.existsSync(src)) {
-      fs.copyFileSync(src, dest);
-      fs.rmSync(src, { force: true });
-    }
+  const src = path.join(current, DB_FILENAME);
+  const dest = path.join(resolvedNew, DB_FILENAME);
+  if (fs.existsSync(src)) {
+    fs.copyFileSync(src, dest);
+    fs.rmSync(src, { force: true });
   }
   const cfg = readConfig();
   cfg.dataDir = resolvedNew;
@@ -68,22 +72,30 @@ export function setDataDir(newDir: string): string {
   return resolvedNew;
 }
 
-/** 認証情報（ソルト + ベリファイア）の保存先 */
-function getAuthPath(): string {
-  return path.join(getDataDir(), 'auth.json');
+/**
+ * 現在開いている .cdb のパス。
+ * null のときは既定の保存先（getDataDir()/chocopass.cdb）を使う。
+ * ダブルクリックで特定のファイルを開いた場合はそのパスが入る。
+ */
+let currentDbPath: string | null = null;
+
+/** データファイル（.cdb）の保存先 */
+function getDbPath(): string {
+  return currentDbPath ?? path.join(getDataDir(), DB_FILENAME);
 }
 
-/** マスターパスワードで暗号化した vault の保存先 */
-function getVaultPath(): string {
-  return path.join(getDataDir(), 'vault.enc');
+/**
+ * 開く .cdb ファイルを切り替える。
+ * 別ファイルになるのでメモリ上の鍵は破棄し、ロック状態に戻す。
+ */
+export function openDbFile(filePath: string): void {
+  currentDbPath = path.resolve(filePath);
+  derivedKey = null;
 }
 
-// --- 旧形式（safeStorage / 平文）の移行用パス ---
-function getLegacyVaultPath(): string {
-  return path.join(app.getPath('userData'), 'vault.dat');
-}
-function getLegacyPlainPath(): string {
-  return path.join(app.getPath('userData'), 'vault.json');
+/** 現在開いている .cdb のフルパス */
+export function getCurrentDbPath(): string {
+  return getDbPath();
 }
 
 interface EncBlob {
@@ -92,10 +104,18 @@ interface EncBlob {
   data: string;
 }
 
-interface AuthFile {
+/**
+ * 単一データファイルの構造。
+ * - salt / verifier: マスターパスワードの検証用
+ * - vault: 暗号化されたパスワードエントリ本体（未保存時は undefined）
+ */
+interface DbFile {
+  format: string;
+  version: number;
   salt: string;
   /** 既知の定数を暗号化したもの。復号できればパスワード正解 */
   verifier: EncBlob;
+  vault?: EncBlob;
 }
 
 /** メモリ上にのみ保持する導出鍵（ロック中は null） */
@@ -133,9 +153,19 @@ function decrypt(key: Buffer, blob: EncBlob): string {
   return dec.toString('utf8');
 }
 
-/** マスターパスワードが設定済みか（auth.json が存在するか） */
+function readDb(): DbFile | null {
+  const p = getDbPath();
+  if (!fs.existsSync(p)) return null;
+  return JSON.parse(fs.readFileSync(p, 'utf-8')) as DbFile;
+}
+
+function writeDb(db: DbFile): void {
+  fs.writeFileSync(getDbPath(), JSON.stringify(db), 'utf-8');
+}
+
+/** マスターパスワードが設定済みか（chocopass.cdb が存在するか） */
 export function hasMasterPassword(): boolean {
-  return fs.existsSync(getAuthPath());
+  return fs.existsSync(getDbPath());
 }
 
 /** 現在ロック解除済みか */
@@ -148,52 +178,25 @@ export function lock(): void {
   derivedKey = null;
 }
 
-/** 旧形式（safeStorage / 平文）の vault を読み込む。移行用 */
-function readLegacyVault(): PasswordEntry[] | null {
-  const legacy = getLegacyVaultPath();
-  const plain = getLegacyPlainPath();
-  try {
-    if (fs.existsSync(legacy) && safeStorage.isEncryptionAvailable()) {
-      const json = safeStorage.decryptString(fs.readFileSync(legacy));
-      return JSON.parse(json) as PasswordEntry[];
-    }
-    if (fs.existsSync(plain)) {
-      return JSON.parse(fs.readFileSync(plain, 'utf-8')) as PasswordEntry[];
-    }
-  } catch (error) {
-    console.error('Failed to read legacy vault:', error);
-  }
-  return null;
-}
-
-function deleteLegacyVault(): void {
-  fs.rmSync(getLegacyVaultPath(), { force: true });
-  fs.rmSync(getLegacyPlainPath(), { force: true });
-}
-
 /**
- * マスターパスワードを新規設定する。
- * 旧形式の vault があれば移行し、その内容を返す（無ければ空配列）。
+ * マスターパスワードを新規設定する。空の vault で初期化し、内容（空配列）を返す。
  */
 export function setupMaster(password: string): PasswordEntry[] {
   const salt = crypto.randomBytes(16);
   const key = deriveKey(password, salt);
 
-  const auth: AuthFile = {
+  const db: DbFile = {
+    format: DB_FORMAT,
+    version: DB_VERSION,
     salt: salt.toString('base64'),
     verifier: encrypt(key, VERIFIER_PLAINTEXT),
   };
-  fs.writeFileSync(getAuthPath(), JSON.stringify(auth), 'utf-8');
+  writeDb(db);
 
   derivedKey = key;
 
-  // 旧データがあれば移行
-  const legacy = readLegacyVault();
-  const entries = legacy ?? [];
+  const entries: PasswordEntry[] = [];
   saveVaultInternal(entries);
-  if (legacy) {
-    deleteLegacyVault();
-  }
   return entries;
 }
 
@@ -203,11 +206,12 @@ export function setupMaster(password: string): PasswordEntry[] {
  */
 export function unlock(password: string): PasswordEntry[] | null {
   try {
-    const auth = JSON.parse(fs.readFileSync(getAuthPath(), 'utf-8')) as AuthFile;
-    const salt = Buffer.from(auth.salt, 'base64');
+    const db = readDb();
+    if (!db) return null;
+    const salt = Buffer.from(db.salt, 'base64');
     const key = deriveKey(password, salt);
     // ベリファイアを復号できれば正解（失敗すると例外）
-    if (decrypt(key, auth.verifier) !== VERIFIER_PLAINTEXT) {
+    if (decrypt(key, db.verifier) !== VERIFIER_PLAINTEXT) {
       return null;
     }
     derivedKey = key;
@@ -221,9 +225,10 @@ export function unlock(password: string): PasswordEntry[] | null {
 /** マスターパスワードを変更する。旧パスワードの検証に成功したら true */
 export function changeMaster(oldPassword: string, newPassword: string): boolean {
   try {
-    const auth = JSON.parse(fs.readFileSync(getAuthPath(), 'utf-8')) as AuthFile;
-    const oldKey = deriveKey(oldPassword, Buffer.from(auth.salt, 'base64'));
-    if (decrypt(oldKey, auth.verifier) !== VERIFIER_PLAINTEXT) {
+    const db = readDb();
+    if (!db) return false;
+    const oldKey = deriveKey(oldPassword, Buffer.from(db.salt, 'base64'));
+    if (decrypt(oldKey, db.verifier) !== VERIFIER_PLAINTEXT) {
       return false;
     }
     // 現在の vault を旧鍵で復号してから新鍵で再暗号化
@@ -231,13 +236,11 @@ export function changeMaster(oldPassword: string, newPassword: string): boolean 
 
     const newSalt = crypto.randomBytes(16);
     const newKey = deriveKey(newPassword, newSalt);
-    const newAuth: AuthFile = {
-      salt: newSalt.toString('base64'),
-      verifier: encrypt(newKey, VERIFIER_PLAINTEXT),
-    };
-    fs.writeFileSync(getAuthPath(), JSON.stringify(newAuth), 'utf-8');
+    db.salt = newSalt.toString('base64');
+    db.verifier = encrypt(newKey, VERIFIER_PLAINTEXT);
+    db.vault = encrypt(newKey, JSON.stringify(entries));
+    writeDb(db);
     derivedKey = newKey;
-    saveVaultInternal(entries);
     return true;
   } catch (error) {
     console.error('Failed to change master password:', error);
@@ -246,18 +249,21 @@ export function changeMaster(oldPassword: string, newPassword: string): boolean 
 }
 
 function loadVaultWithKey(key: Buffer): PasswordEntry[] {
-  const vaultPath = getVaultPath();
-  if (!fs.existsSync(vaultPath)) return [];
-  const blob = JSON.parse(fs.readFileSync(vaultPath, 'utf-8')) as EncBlob;
-  return JSON.parse(decrypt(key, blob)) as PasswordEntry[];
+  const db = readDb();
+  if (!db || !db.vault) return [];
+  return JSON.parse(decrypt(key, db.vault)) as PasswordEntry[];
 }
 
 function saveVaultInternal(entries: PasswordEntry[]): void {
   if (!derivedKey) {
     throw new Error('Vault is locked');
   }
-  const blob = encrypt(derivedKey, JSON.stringify(entries));
-  fs.writeFileSync(getVaultPath(), JSON.stringify(blob), 'utf-8');
+  const db = readDb();
+  if (!db) {
+    throw new Error('Database not initialized');
+  }
+  db.vault = encrypt(derivedKey, JSON.stringify(entries));
+  writeDb(db);
 }
 
 /** vault を保存する（ロック解除済みであること） */

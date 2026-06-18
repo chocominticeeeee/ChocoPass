@@ -82,6 +82,22 @@ export function App() {
     })();
   }, []);
 
+  // 実行中に別の .cdb がダブルクリックで開かれたら、ロック画面に戻して状態を取り直す
+  useEffect(() => {
+    const handler = async () => {
+      loadedRef.current = false;
+      setPasswords([]);
+      setShowSettings(false);
+      setShowImportModal(false);
+      setShowFormModal(false);
+      setSearchTerm('');
+      setSelectedFolder(ALL_FOLDERS);
+      const status = await window.electron?.ipc.invoke('auth-status');
+      setAuthState(status?.hasMaster ? 'unlock' : 'setup');
+    };
+    window.electron?.ipc.on('open-cdb', handler);
+  }, []);
+
   // 変更があるたびに永続保存する（ロック解除後のみ）
   useEffect(() => {
     if (!loadedRef.current) return;
@@ -304,11 +320,11 @@ export function App() {
         className="glass-strong flex flex-col border-r border-white/10 shrink-0"
         style={{ width: sidebarWidth }}
       >
-        <div className="px-6 py-6 border-b border-white/10">
+        <div className="px-2 py-2 border-b border-white/10">
           <img
             src={logoUrl}
             alt="ちょこパス"
-            className="h-auto w-44 max-w-full object-contain"
+            className="h-auto mx-auto w-44 max-w-full object-contain"
           />
         </div>
 
@@ -460,6 +476,7 @@ export function App() {
           onClose={() => setShowSettings(false)}
           passwordCount={passwords.length}
           onDeleteAll={handleDeleteAll}
+          hasMaster={authState === 'unlock' || authState === 'unlocked'}
         />
       )}
     </div>
