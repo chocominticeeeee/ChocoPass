@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { Eye, EyeOff, Loader2, AlertCircle } from "lucide-react";
+import { Input } from "./ui/input";
+import { Button } from "./ui/button";
 import avatarUrl from "../assets/アバター透過.png";
 import logoUrl from "../assets/logo.png";
 
@@ -64,9 +66,6 @@ export function MasterPasswordScreen({ mode, onUnlocked }: MasterPasswordScreenP
         }
     };
 
-    const inputClass =
-        "w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 pr-11 text-slate-100 placeholder:text-slate-500 transition focus:border-cyan-400/50 focus:bg-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-400/20";
-
     return (
         <div className="flex h-full w-full items-center justify-center p-6">
             <form onSubmit={submit} className="w-full max-w-lg animate-fade-in">
@@ -98,13 +97,13 @@ export function MasterPasswordScreen({ mode, onUnlocked }: MasterPasswordScreenP
 
                 <div className="space-y-3">
                     <div className="relative">
-                        <input
+                        <Input
                             type={show ? "text" : "password"}
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             placeholder="マスターパスワード"
                             autoFocus
-                            className={inputClass}
+                            className="px-4 py-3 pr-11"
                         />
                         <button
                             type="button"
@@ -117,24 +116,25 @@ export function MasterPasswordScreen({ mode, onUnlocked }: MasterPasswordScreenP
                     </div>
 
                     {isSetup && (
-                        <input
+                        <Input
                             type={show ? "text" : "password"}
                             value={confirm}
                             onChange={(e) => setConfirm(e.target.value)}
                             placeholder="マスターパスワード（確認）"
-                            className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-slate-100 placeholder:text-slate-500 transition focus:border-cyan-400/50 focus:bg-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-400/20"
+                            className="px-4 py-3"
                         />
                     )}
                 </div>
 
-                <button
+                <Button
                     type="submit"
                     disabled={busy}
-                    className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-400 to-violet-500 px-4 py-3 font-semibold text-slate-950 transition hover:shadow-[0_8px_30px_-6px_rgba(34,211,238,0.6)] hover:brightness-110 active:scale-[0.98] disabled:opacity-60"
+                    size="lg"
+                    className="mt-5 w-full bg-gradient-to-r from-cyan-400 to-violet-500 text-slate-950 hover:shadow-[0_8px_30px_-6px_rgba(34,211,238,0.6)] hover:brightness-110 disabled:opacity-60"
                 >
                     {busy && <Loader2 className="h-4 w-4 animate-spin" />}
                     {isSetup ? "保管庫を作成" : "ロック解除"}
-                </button>
+                </Button>
 
                 {isSetup && (
                     <p className="mt-4 text-center text-xs text-slate-500">

@@ -10,6 +10,15 @@ import {
 } from 'lucide-react';
 import type { PasswordEntry } from '../../services/keepassImporter';
 import { MIME_ENTRY } from './FolderList';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from './ui/table';
+import { Button } from './ui/button';
 
 interface PasswordTableProps {
   entries: PasswordEntry[];
@@ -53,50 +62,53 @@ export function PasswordTable({ entries, onEdit, onToggleFavorite }: PasswordTab
     );
   }
 
+  // 行内の小さなアイコンボタン（Button の icon サイズを表内向けに縮める）
   const iconBtn =
-    'rounded-md p-1.5 text-slate-500 transition hover:bg-white/10 hover:text-cyan-300';
+    'h-auto w-auto rounded-md p-1.5 text-slate-500 hover:bg-white/10 hover:text-cyan-300';
 
   return (
     <div className="flex-1 overflow-auto px-4 py-3">
-      <table className="w-full border-separate border-spacing-y-1.5 text-sm">
-        <thead className="text-left text-[11px] uppercase tracking-wider text-slate-500">
-          <tr>
-            <th className="whitespace-nowrap px-2.5 py-2 font-medium">タイトル</th>
-            <th className="whitespace-nowrap px-2.5 py-2 font-medium">ユーザー名</th>
-            <th className="whitespace-nowrap px-2.5 py-2 font-medium">パスワード</th>
-            <th className="whitespace-nowrap px-2.5 py-2 font-medium">ウェブサイト</th>
-            <th className="whitespace-nowrap px-2.5 py-2 font-medium">メモ</th>
-          </tr>
-        </thead>
-        <tbody>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>タイトル</TableHead>
+            <TableHead>ユーザー名</TableHead>
+            <TableHead>パスワード</TableHead>
+            <TableHead>ウェブサイト</TableHead>
+            <TableHead>メモ</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {entries.map((entry) => {
             const isVisible = visible.has(entry.id);
             return (
-              <tr
+              <TableRow
                 key={entry.id}
                 draggable
                 onDragStart={(e) => {
                   e.dataTransfer.setData(MIME_ENTRY, entry.id);
                   e.dataTransfer.effectAllowed = 'move';
                 }}
-                className="group cursor-grab align-middle [&>td]:bg-white/[0.03] [&>td]:transition hover:[&>td]:bg-white/[0.07] active:cursor-grabbing [&>td:first-child]:rounded-l-xl [&>td:last-child]:rounded-r-xl [&>td]:border-y [&>td]:border-white/5 [&>td:first-child]:border-l [&>td:last-child]:border-r"
+                className="group cursor-grab [&>td]:bg-white/[0.03] [&>td]:transition hover:[&>td]:bg-white/[0.07] active:cursor-grabbing [&>td:first-child]:rounded-l-xl [&>td:last-child]:rounded-r-xl [&>td]:border-y [&>td]:border-white/5 [&>td:first-child]:border-l [&>td:last-child]:border-r"
               >
                 {/* タイトル（ダブルクリックで編集） */}
-                <td
-                  className="cursor-pointer select-none px-2.5 py-2 font-medium text-white"
+                <TableCell
+                  className="cursor-pointer select-none font-medium text-white"
                   onDoubleClick={() => onEdit(entry)}
                   title="ダブルクリックで編集"
                 >
                   <div className="flex items-center gap-2.5">
-                    <button
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       onClick={(e) => {
                         e.stopPropagation();
                         onToggleFavorite(entry.id);
                       }}
                       onDoubleClick={(e) => e.stopPropagation()}
-                      className={`shrink-0 rounded-md p-1 transition ${
+                      className={`h-auto w-auto shrink-0 rounded-md p-1 ${
                         entry.favorite
-                          ? 'text-amber-400 hover:text-amber-300'
+                          ? 'text-amber-400 hover:bg-transparent hover:text-amber-300'
                           : 'text-slate-600 hover:bg-white/10 hover:text-amber-300'
                       }`}
                       title={entry.favorite ? 'お気に入りを解除' : 'お気に入りに登録'}
@@ -105,22 +117,24 @@ export function PasswordTable({ entries, onEdit, onToggleFavorite }: PasswordTab
                         className="h-4 w-4"
                         fill={entry.favorite ? 'currentColor' : 'none'}
                       />
-                    </button>
+                    </Button>
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-400/20 to-violet-500/20 text-xs font-bold uppercase text-cyan-300 ring-1 ring-inset ring-white/10">
                       {entry.title.slice(0, 1) || '?'}
                     </span>
                     <span className="truncate">{entry.title}</span>
                   </div>
-                </td>
+                </TableCell>
 
                 {/* ユーザー名 */}
-                <td className="px-2.5 py-2 text-slate-300">
+                <TableCell className="text-slate-300">
                   {entry.username ? (
                     <div className="flex items-center gap-2">
                       <span className="truncate max-w-[180px]">
                         {entry.username}
                       </span>
-                      <button
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         onClick={() => copy(entry.username, `${entry.id}:user`)}
                         className={iconBtn}
                         title="コピー"
@@ -130,21 +144,23 @@ export function PasswordTable({ entries, onEdit, onToggleFavorite }: PasswordTab
                         ) : (
                           <Copy className="h-4 w-4" />
                         )}
-                      </button>
+                      </Button>
                     </div>
                   ) : (
                     <span className="text-slate-600">—</span>
                   )}
-                </td>
+                </TableCell>
 
                 {/* パスワード */}
-                <td className="px-2.5 py-2 text-slate-300">
+                <TableCell className="text-slate-300">
                   {entry.password ? (
                     <div className="flex items-center gap-2">
                       <span className="font-mono truncate max-w-[160px] tracking-tight">
                         {isVisible ? entry.password : '••••••••'}
                       </span>
-                      <button
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         onClick={() => toggleVisible(entry.id)}
                         className={iconBtn}
                         title={isVisible ? '隠す' : '表示'}
@@ -154,8 +170,10 @@ export function PasswordTable({ entries, onEdit, onToggleFavorite }: PasswordTab
                         ) : (
                           <Eye className="h-4 w-4" />
                         )}
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         onClick={() => copy(entry.password, `${entry.id}:pass`)}
                         className={iconBtn}
                         title="コピー"
@@ -165,15 +183,15 @@ export function PasswordTable({ entries, onEdit, onToggleFavorite }: PasswordTab
                         ) : (
                           <Copy className="h-4 w-4" />
                         )}
-                      </button>
+                      </Button>
                     </div>
                   ) : (
                     <span className="text-slate-600">—</span>
                   )}
-                </td>
+                </TableCell>
 
                 {/* ウェブサイト */}
-                <td className="px-2.5 py-2">
+                <TableCell>
                   {entry.url ? (
                     <button
                       onClick={() => openUrl(entry.url)}
@@ -185,10 +203,10 @@ export function PasswordTable({ entries, onEdit, onToggleFavorite }: PasswordTab
                   ) : (
                     <span className="text-slate-600">—</span>
                   )}
-                </td>
+                </TableCell>
 
                 {/* メモ */}
-                <td className="px-2.5 py-2 text-slate-400">
+                <TableCell className="text-slate-400">
                   {entry.notes ? (
                     <span
                       className="block max-w-[200px] truncate"
@@ -199,12 +217,12 @@ export function PasswordTable({ entries, onEdit, onToggleFavorite }: PasswordTab
                   ) : (
                     <span className="text-slate-600">—</span>
                   )}
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             );
           })}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </div>
   );
 }

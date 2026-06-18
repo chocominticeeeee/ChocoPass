@@ -12,6 +12,16 @@ import {
   Star,
 } from 'lucide-react';
 import type { PasswordEntry } from '../../services/keepassImporter';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from './ui/alert-dialog';
 
 /** フォルダに割り当て可能な絵文字 */
 const FOLDER_EMOJIS = [
@@ -53,8 +63,8 @@ interface FolderListProps {
   onMoveFolder: (sourcePath: string, targetPath: string) => void;
   /** フォルダ名を変更（末端名を newLeaf に） */
   onRenameFolder: (path: string, newLeaf: string) => void;
-  /** フォルダを削除（配下ごと）。削除が確定したら true を返す */
-  onDeleteFolder: (path: string) => boolean;
+  /** フォルダを削除（配下のエントリ・サブフォルダごと） */
+  onDeleteFolder: (path: string) => void;
 }
 
 export const EMPTY_FOLDERS_KEY = 'chocopass-empty-folders';
@@ -185,6 +195,8 @@ export function FolderList({
     y: number;
     mode: 'main' | 'icon';
   } | null>(null);
+  // 削除確認モーダルの対象フォルダパス（null なら非表示）
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null);
   // 名前変更中のフォルダパスと入力値
   const [renaming, setRenaming] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
@@ -337,6 +349,31 @@ export function FolderList({
       return next;
     });
   };
+
+  // 削除確認モーダルで「削除」を押したときの実処理
+  const confirmDeleteFolder = (path: string) => {
+    onDeleteFolder(path);
+    // 配下の空フォルダも取り除く
+    setExtraFolders((prev) => {
+      const next = new Set<string>();
+      prev.forEach((p) => {
+        if (!(p === path || p.startsWith(path + PATH_SEP))) next.add(p);
+      });
+      return next;
+    });
+    // 配下のアイコン割り当ても取り除く
+    setFolderIcons((prev) => pruneMap(prev, path));
+    setPendingDelete(null);
+  };
+
+  // 削除対象フォルダ配下のエントリ数（確認文言用）
+  const pendingDeleteCount =
+    pendingDelete === null
+      ? 0
+      : entries.filter((p) => {
+          const g = p.group?.trim() ?? '';
+          return g === pendingDelete || g.startsWith(pendingDelete + PATH_SEP);
+        }).length;
 
   /** ドロップ処理。target が '' ならルート/未分類への移動 */
   const handleDrop = (e: React.DragEvent, targetPath: string) => {
@@ -617,21 +654,8 @@ export function FolderList({
                     </button>
                     <button
                       onClick={() => {
-                        const path = menu.path;
+                        setPendingDelete(menu.path);
                         setMenu(null);
-                        const ok = onDeleteFolder(path);
-                        if (ok) {
-                          // 配下の空フォルダも取り除く
-                          setExtraFolders((prev) => {
-                            const next = new Set<string>();
-                            prev.forEach((p) => {
-                              if (!(p === path || p.startsWith(path + PATH_SEP))) next.add(p);
-                            });
-                            return next;
-                          });
-                          // 配下のアイコン割り当ても取り除く
-                          setFolderIcons((prev) => pruneMap(prev, path));
-                        }
                       }}
                       className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-rose-400 transition hover:bg-rose-500/10 hover:text-rose-300"
                     >
@@ -645,6 +669,56 @@ export function FolderList({
           </div>,
           document.body
         )}
+
+      {/* フォルダ削除の確認モーダル（shadcn AlertDialog） */}
+      <AlertDialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingDelete(null);
+        }}
+      >
+        <AlertDialogContent
+          onClick={(e) => e.stopPropagation()}
+          onContextMenu={(e) => e.preventDefault()}
+        >
+          <AlertDialogHeader>
+            <AlertDialogTitle>フォルダを削除しますか？</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingDelete !== null && (
+                <>
+                  フォルダ「
+                  <span className="font-semibold text-slate-200">
+                    {pendingDelete.includes(PATH_SEP)
+                      ? pendingDelete.slice(pendingDelete.lastIndexOf(PATH_SEP) + 1)
+                      : pendingDelete}
+                  </span>
+                  」
+                  {pendingDeleteCount > 0 ? (
+                    <>
+                      と、その中の{' '}
+                      <span className="font-semibold text-rose-300">{pendingDeleteCount}</span>{' '}
+                      件のパスワードを削除します。
+                    </>
+                  ) : (
+                    'を削除します。'
+                  )}
+                  <br />
+                  この操作は取り消せません。
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>キャンセル</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => pendingDelete !== null && confirmDeleteFolder(pendingDelete)}
+            >
+              <Trash2 className="h-4 w-4" />
+              削除
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

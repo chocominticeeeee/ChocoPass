@@ -42,7 +42,7 @@ export function TitleBar({ onOpenSettings, onLock, theme, onToggleTheme }: Title
           <ShieldCheck className="h-3.5 w-3.5 text-slate-950" strokeWidth={2.6} />
         </div>
         <span className="font-display text-sm font-semibold tracking-tight text-slate-300">
-          ChocoPass
+          ちょこパス
         </span>
       </div>
 
@@ -52,7 +52,7 @@ export function TitleBar({ onOpenSettings, onLock, theme, onToggleTheme }: Title
           <button
             onClick={onLock}
             title="ロック"
-            className="flex h-10 w-11 items-center justify-center text-slate-400 transition hover:bg-white/10 hover:text-cyan-300"
+            className="flex h-10 w-11 items-center justify-center text-slate-400 outline-none focus:outline-none focus-visible:outline-none transition hover:bg-white/10 hover:text-cyan-300"
           >
             <Lock className="h-4 w-4" />
           </button>
@@ -60,14 +60,14 @@ export function TitleBar({ onOpenSettings, onLock, theme, onToggleTheme }: Title
         <button
           onClick={onToggleTheme}
           title={theme === 'dark' ? 'ライトモードに切替' : 'ダークモードに切替'}
-          className="flex h-10 w-11 items-center justify-center text-slate-400 transition hover:bg-white/10 hover:text-cyan-300"
+          className="flex h-10 w-11 items-center justify-center text-slate-400 outline-none focus:outline-none focus-visible:outline-none transition hover:bg-white/10 hover:text-cyan-300"
         >
           {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </button>
         <button
           onClick={onOpenSettings}
           title="設定"
-          className="flex h-10 w-11 items-center justify-center text-slate-400 transition hover:bg-white/10 hover:text-cyan-300"
+          className="flex h-10 w-11 items-center justify-center text-slate-400 outline-none focus:outline-none focus-visible:outline-none transition hover:bg-white/10 hover:text-cyan-300"
         >
           <Settings className="h-4 w-4" />
         </button>
@@ -77,21 +77,21 @@ export function TitleBar({ onOpenSettings, onLock, theme, onToggleTheme }: Title
         <button
           onClick={minimize}
           title="最小化"
-          className="flex h-10 w-11 items-center justify-center text-slate-400 transition hover:bg-white/10 hover:text-white"
+          className="flex h-10 w-11 items-center justify-center text-slate-400 outline-none focus:outline-none focus-visible:outline-none transition hover:bg-white/10 hover:text-white"
         >
           <Minus className="h-4 w-4" />
         </button>
         <button
           onClick={toggleMaximize}
           title={maximized ? '元のサイズに戻す' : '最大化'}
-          className="flex h-10 w-11 items-center justify-center text-slate-400 transition hover:bg-white/10 hover:text-white"
+          className="flex h-10 w-11 items-center justify-center text-slate-400 outline-none focus:outline-none focus-visible:outline-none transition hover:bg-white/10 hover:text-white"
         >
           {maximized ? <Copy className="h-3.5 w-3.5 -scale-x-100" /> : <Square className="h-3.5 w-3.5" />}
         </button>
         <button
           onClick={close}
           title="閉じる"
-          className="flex h-10 w-12 items-center justify-center text-slate-400 transition hover:bg-rose-500 hover:text-white"
+          className="flex h-10 w-12 items-center justify-center text-slate-400 outline-none focus:outline-none focus-visible:outline-none transition hover:bg-rose-500 hover:text-white"
         >
           <X className="h-4 w-4" />
         </button>

@@ -1,6 +1,17 @@
 import React, { useState } from 'react';
-import { X, Sparkles, Trash2 } from 'lucide-react';
+import { Sparkles, Trash2 } from 'lucide-react';
 import type { PasswordEntry } from '../../services/keepassImporter';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from './ui/dialog';
+import { Input } from './ui/input';
+import { Textarea } from './ui/textarea';
+import { Label } from './ui/label';
+import { Button } from './ui/button';
 
 interface EntryFormModalProps {
   /** 編集対象のエントリ。未指定なら新規作成 */
@@ -10,10 +21,6 @@ interface EntryFormModalProps {
   /** エントリを削除（編集時のみ） */
   onDelete?: (id: string) => void;
 }
-
-const inputClass =
-  'w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 transition focus:border-cyan-400/50 focus:bg-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-400/20';
-const labelClass = 'block text-sm font-medium text-slate-300 mb-1.5';
 
 export function EntryFormModal({ entry, onSave, onClose, onDelete }: EntryFormModalProps) {
   const isEdit = !!entry;
@@ -68,139 +75,121 @@ export function EntryFormModal({ entry, onSave, onClose, onDelete }: EntryFormMo
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
-      <form
-        onSubmit={handleSubmit}
-        className="glass-strong relative w-full max-w-xl animate-scale-in overflow-hidden rounded-2xl shadow-2xl shadow-black/60"
-      >
-        {/* 上部のネオンライン */}
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-400/70 to-transparent" />
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <form onSubmit={handleSubmit}>
+          <DialogHeader>
+            <DialogTitle>{isEdit ? 'エントリを編集' : '新規エントリ'}</DialogTitle>
+          </DialogHeader>
 
-        <div className="flex items-center justify-between border-b border-white/10 px-6 py-5">
-          <h2 className="font-display text-xl font-bold text-white">
-            {isEdit ? 'エントリを編集' : '新規エントリ'}
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 transition hover:bg-white/10 hover:text-white"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
+          <div className="max-h-[65vh] space-y-4 overflow-y-auto px-6 py-5">
+            {error && (
+              <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3">
+                <p className="text-sm text-rose-300">{error}</p>
+              </div>
+            )}
 
-        <div className="max-h-[65vh] space-y-4 overflow-y-auto px-6 py-5">
-          {error && (
-            <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3">
-              <p className="text-sm text-rose-300">{error}</p>
-            </div>
-          )}
-
-          <div>
-            <label className={labelClass}>
-              タイトル <span className="text-rose-400">*</span>
-            </label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              autoFocus
-              className={inputClass}
-            />
-          </div>
-
-          <div>
-            <label className={labelClass}>ユーザー名</label>
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className={inputClass}
-            />
-          </div>
-
-          <div>
-            <label className={labelClass}>パスワード</label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className={`${inputClass} flex-1 font-mono`}
+            <div className="space-y-1.5">
+              <Label htmlFor="entry-title">
+                タイトル <span className="text-rose-400">*</span>
+              </Label>
+              <Input
+                id="entry-title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                autoFocus
               />
-              <button
-                type="button"
-                onClick={generatePassword}
-                className="flex items-center gap-1.5 whitespace-nowrap rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-3 py-2 text-sm font-medium text-cyan-300 transition hover:bg-cyan-400/20"
-              >
-                <Sparkles className="h-4 w-4" />
-                自動生成
-              </button>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="entry-username">ユーザー名</Label>
+              <Input
+                id="entry-username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="entry-password">パスワード</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="entry-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="flex-1 font-mono"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={generatePassword}
+                  className="whitespace-nowrap border-cyan-400/30 bg-cyan-400/10 text-cyan-300 hover:bg-cyan-400/20 hover:text-cyan-200"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  自動生成
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="entry-url">ウェブサイト</Label>
+              <Input
+                id="entry-url"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="https://example.com"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="entry-group">グループ</Label>
+              <Input
+                id="entry-group"
+                value={group}
+                onChange={(e) => setGroup(e.target.value)}
+                placeholder="例: 仕事/メール"
+              />
+              <p className="text-xs text-slate-500">
+                「/」で区切るとサブフォルダになります（例: 仕事/メール）
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="entry-notes">メモ</Label>
+              <Textarea
+                id="entry-notes"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                className="h-24 resize-none"
+              />
             </div>
           </div>
 
-          <div>
-            <label className={labelClass}>ウェブサイト</label>
-            <input
-              type="text"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://example.com"
-              className={inputClass}
-            />
-          </div>
-
-          <div>
-            <label className={labelClass}>グループ</label>
-            <input
-              type="text"
-              value={group}
-              onChange={(e) => setGroup(e.target.value)}
-              placeholder="例: 仕事/メール"
-              className={inputClass}
-            />
-            <p className="mt-1.5 text-xs text-slate-500">
-              「/」で区切るとサブフォルダになります（例: 仕事/メール）
-            </p>
-          </div>
-
-          <div>
-            <label className={labelClass}>メモ</label>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className={`${inputClass} h-24 resize-none`}
-            />
-          </div>
-        </div>
-
-        <div className="flex gap-3 border-t border-white/10 px-6 py-5">
-          {isEdit && onDelete && (
-            <button
-              type="button"
-              onClick={handleDelete}
-              className="flex items-center justify-center gap-2 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-2.5 font-medium text-rose-300 transition hover:bg-rose-500/20 active:scale-[0.98]"
-              title="削除"
+          <DialogFooter className="border-t border-white/10 px-6 py-5">
+            {isEdit && onDelete && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleDelete}
+                title="削除"
+                className="border-rose-500/40 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20 hover:text-rose-200 sm:mr-auto"
+              >
+                <Trash2 className="h-4 w-4" />
+                削除
+              </Button>
+            )}
+            <Button type="button" variant="outline" onClick={onClose} className="flex-1 sm:flex-none">
+              キャンセル
+            </Button>
+            <Button
+              type="submit"
+              className="flex-1 bg-gradient-to-r from-cyan-400 to-violet-500 text-slate-950 hover:shadow-[0_8px_30px_-6px_rgba(34,211,238,0.6)] hover:brightness-110 sm:flex-none"
             >
-              <Trash2 className="h-4 w-4" />
-              削除
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 font-medium text-slate-300 transition hover:bg-white/10 hover:text-white"
-          >
-            キャンセル
-          </button>
-          <button
-            type="submit"
-            className="flex-1 rounded-xl bg-gradient-to-r from-cyan-400 to-violet-500 px-4 py-2.5 font-semibold text-slate-950 transition hover:shadow-[0_8px_30px_-6px_rgba(34,211,238,0.6)] hover:brightness-110 active:scale-[0.98]"
-          >
-            保存
-          </button>
-        </div>
-      </form>
-    </div>
+              保存
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

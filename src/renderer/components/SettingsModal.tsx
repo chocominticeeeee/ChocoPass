@@ -1,6 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { X, Moon, Sun, KeyRound, Check, AlertCircle, FolderOpen, Trash2 } from 'lucide-react';
+import { Moon, Sun, KeyRound, Check, AlertCircle, FolderOpen, Trash2 } from 'lucide-react';
 import type { Theme } from '../theme';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from './ui/dialog';
+import { Input } from './ui/input';
+import { Button } from './ui/button';
+import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
 
 interface SettingsModalProps {
   theme: Theme;
@@ -48,9 +57,6 @@ export function SettingsModal({
     }
   };
 
-  const inputClass =
-    'w-full rounded-xl border border-white/10 bg-white/5 px-3.5 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 transition focus:border-cyan-400/50 focus:bg-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-400/20';
-
   const changePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setPwError(null);
@@ -91,19 +97,11 @@ export function SettingsModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
-      <div className="glass-strong relative w-full max-w-xl animate-scale-in overflow-hidden rounded-2xl shadow-2xl shadow-black/60">
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-400/70 to-transparent" />
-
-        <div className="flex items-center justify-between border-b border-white/10 px-6 py-5">
-          <h2 className="font-display text-xl font-bold text-white">設定</h2>
-          <button
-            onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 transition hover:bg-white/10 hover:text-white"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>設定</DialogTitle>
+        </DialogHeader>
 
         <div className="max-h-[70vh] space-y-7 overflow-y-auto px-6 py-6">
           {/* テーマ切り替え */}
@@ -116,30 +114,23 @@ export function SettingsModal({
                 <p className="text-sm font-medium text-slate-200">テーマ</p>
                 <p className="text-xs text-slate-500">ダーク / ライトを切り替えます</p>
               </div>
-              <div className="flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 p-1">
-                <button
-                  onClick={() => onChangeTheme('dark')}
-                  className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition ${
-                    theme === 'dark'
-                      ? 'bg-gradient-to-r from-cyan-400 to-violet-500 text-slate-950'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
+              <ToggleGroup
+                type="single"
+                value={theme}
+                onValueChange={(value) => {
+                  // 同じ項目を再クリックすると空文字になるため無視する
+                  if (value === 'dark' || value === 'light') onChangeTheme(value);
+                }}
+              >
+                <ToggleGroupItem value="dark">
                   <Moon className="h-4 w-4" />
                   ダーク
-                </button>
-                <button
-                  onClick={() => onChangeTheme('light')}
-                  className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition ${
-                    theme === 'light'
-                      ? 'bg-gradient-to-r from-cyan-400 to-violet-500 text-slate-950'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
+                </ToggleGroupItem>
+                <ToggleGroupItem value="light">
                   <Sun className="h-4 w-4" />
                   ライト
-                </button>
-              </div>
+                </ToggleGroupItem>
+              </ToggleGroup>
             </div>
           </section>
 
@@ -154,14 +145,15 @@ export function SettingsModal({
               <p className="mb-3 break-all font-mono text-xs text-slate-300">
                 {dataDir || '読み込み中...'}
               </p>
-              <button
+              <Button
                 onClick={changeDataDir}
                 disabled={dirBusy}
-                className="flex w-full items-center justify-center gap-2 rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-4 py-2.5 text-sm font-semibold text-cyan-300 transition hover:bg-cyan-400/20 active:scale-[0.98] disabled:opacity-60"
+                variant="outline"
+                className="w-full border-cyan-400/30 bg-cyan-400/10 text-cyan-300 hover:bg-cyan-400/20 hover:text-cyan-200"
               >
                 <FolderOpen className="h-4 w-4" />
                 {dirBusy ? '変更中...' : '保存先フォルダを変更'}
-              </button>
+              </Button>
               <p className="mt-2 text-xs text-slate-500">
                 既存の暗号化データは新しいフォルダへ移動されます。
               </p>
@@ -190,34 +182,32 @@ export function SettingsModal({
             )}
 
             <form onSubmit={changePassword} className="space-y-3">
-              <input
+              <Input
                 type="password"
                 value={oldPw}
                 onChange={(e) => setOldPw(e.target.value)}
                 placeholder="現在のマスターパスワード"
-                className={inputClass}
               />
-              <input
+              <Input
                 type="password"
                 value={newPw}
                 onChange={(e) => setNewPw(e.target.value)}
                 placeholder="新しいマスターパスワード（8文字以上）"
-                className={inputClass}
               />
-              <input
+              <Input
                 type="password"
                 value={confirmPw}
                 onChange={(e) => setConfirmPw(e.target.value)}
                 placeholder="新しいマスターパスワード（確認）"
-                className={inputClass}
               />
-              <button
+              <Button
                 type="submit"
                 disabled={busy}
-                className="w-full rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-4 py-2.5 text-sm font-semibold text-cyan-300 transition hover:bg-cyan-400/20 active:scale-[0.98] disabled:opacity-60"
+                variant="outline"
+                className="w-full border-cyan-400/30 bg-cyan-400/10 text-cyan-300 hover:bg-cyan-400/20 hover:text-cyan-200"
               >
                 パスワードを変更
-              </button>
+              </Button>
             </form>
           </section>
           )}
@@ -234,19 +224,20 @@ export function SettingsModal({
                 登録されている {passwordCount} 件のパスワードをすべて削除します。
                 この操作は取り消せません。
               </p>
-              <button
+              <Button
                 onClick={onDeleteAll}
                 disabled={passwordCount === 0}
-                className="flex w-full items-center justify-center gap-2 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-2.5 text-sm font-semibold text-rose-300 transition hover:bg-rose-500/20 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+                variant="destructive"
+                className="w-full bg-rose-500/10 text-rose-300 border border-rose-500/40 bg-none hover:bg-rose-500/20 hover:text-rose-200 hover:shadow-none"
               >
                 <Trash2 className="h-4 w-4" />
                 すべて削除
-              </button>
+              </Button>
             </div>
           </section>
           )}
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

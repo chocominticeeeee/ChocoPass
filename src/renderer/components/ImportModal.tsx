@@ -1,6 +1,14 @@
 import React, { useState } from 'react';
-import { X, Upload, AlertCircle, FileText } from 'lucide-react';
+import { Upload, AlertCircle, FileText } from 'lucide-react';
 import type { PasswordEntry } from '../../services/keepassImporter';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from './ui/dialog';
+import { Button } from './ui/button';
 
 declare global {
   interface Window {
@@ -42,21 +50,11 @@ export function ImportModal({ onSuccess, onClose }: ImportModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
-      <div className="glass-strong relative w-full max-w-md animate-scale-in overflow-hidden rounded-2xl shadow-2xl shadow-black/60">
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-400/70 to-transparent" />
-
-        <div className="flex items-center justify-between border-b border-white/10 px-6 py-5">
-          <h2 className="font-display text-xl font-bold text-white">
-            KeePass CSV をインポート
-          </h2>
-          <button
-            onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 transition hover:bg-white/10 hover:text-white"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>KeePass CSV をインポート</DialogTitle>
+        </DialogHeader>
 
         <div className="px-6 py-5">
           {error && (
@@ -93,24 +91,25 @@ export function ImportModal({ onSuccess, onClose }: ImportModalProps) {
             </ol>
           </div>
 
-          <div className="mt-5 flex gap-3">
-            <button
+          <DialogFooter className="mt-5">
+            <Button
+              variant="outline"
               onClick={onClose}
               disabled={isLoading}
-              className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 font-medium text-slate-300 transition hover:bg-white/10 hover:text-white disabled:opacity-50"
+              className="flex-1"
             >
               キャンセル
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={handleSelectFile}
               disabled={isLoading}
-              className="flex-1 rounded-xl bg-gradient-to-r from-cyan-400 to-violet-500 px-4 py-2.5 font-semibold text-slate-950 transition hover:shadow-[0_8px_30px_-6px_rgba(34,211,238,0.6)] hover:brightness-110 active:scale-[0.98] disabled:opacity-50"
+              className="flex-1 bg-gradient-to-r from-cyan-400 to-violet-500 text-slate-950 hover:shadow-[0_8px_30px_-6px_rgba(34,211,238,0.6)] hover:brightness-110"
             >
               {isLoading ? 'インポート中...' : 'ファイルを選択'}
-            </button>
-          </div>
+            </Button>
+          </DialogFooter>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
